@@ -174,9 +174,15 @@ public final class GameRuntime {
                 }
                 InstrumentationHooks.applyTargetOrientation(activity);
                 if (target.hasExtra(InstrumentationHooks.EXTRA_NEXT_CONFIG)) {
-                    ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
-                    Context loadingTheme = new ContextThemeWrapper(fusionBase, androidx.appcompat.R.style.Theme_AppCompat);
-                    decor.addView(LayoutInflater.from(loadingTheme).inflate(R.layout.loading_view, decor, false));
+                    // Android 10: getDecorView() inside callActivityOnCreate can throw
+                    // IllegalArgumentException("display must not be null") because the
+                    // window has no display yet. The loading overlay is cosmetic only.
+                    try {
+                        ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
+                        Context loadingTheme = new ContextThemeWrapper(fusionBase, androidx.appcompat.R.style.Theme_AppCompat);
+                        decor.addView(LayoutInflater.from(loadingTheme).inflate(R.layout.loading_view, decor, false));
+                    } catch (Exception ignored) {
+                    }
                 }
             } catch (Exception e) {
                 throw new IllegalStateException("Cannot prepare activity", e);
