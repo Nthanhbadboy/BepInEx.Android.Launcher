@@ -10,6 +10,7 @@ import android.content.res.AssetManager;
 import android.os.Build;
 import android.util.Log;
 import android.view.Display;
+import android.view.WindowManager;
 
 
 import org.jetbrains.annotations.Nullable;
@@ -143,7 +144,22 @@ public class CustomContextWrapper extends ContextWrapper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             return this.fusionContext.getDisplay();
         }
-        return null;
+        // Android 10 and below: Context.getDisplay() does not exist yet.
+        // The Unity player calls getDisplay() while creating the DecorView
+        // (PhoneWindow.generateDecor -> DecorContext -> createDisplayContext)
+        // and crashes with "display must not be null" when we return null.
+        // Resolve the display through the WindowManager of the original context.
+        try {
+            WindowManager wm = (WindowManager) fusionContext.getSystemService(Context.WINDOW_SERVICE);
+            Display display = wm != null ? wm.getDefaultDisplay() : null;
+            if (display != null) return display;
+        } catch (Throwable ignored) {
+        }
+        try {
+            return (Display) Context.class.getMethod("getDisplay").invoke(fusionContext);
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     @Override
